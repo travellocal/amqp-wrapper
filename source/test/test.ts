@@ -1,4 +1,5 @@
-import {expect,sinon,supertest} from "rokot-test";
+import {expect} from "./chai";
+import * as sinon from "sinon";
 import {RabbitMqConnectionFactory,RabbitMqConsumer,RabbitMqProducer, IRabbitMqConnectionConfig, RabbitMqSingletonConnectionFactory} from "../index";
 import {ConsoleLogger} from "rokot-log";
 import * as Promise from "bluebird";
