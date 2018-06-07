@@ -1,10 +1,10 @@
-import {expect} from "./chai";
-import * as sinon from "sinon";
-import {RabbitMqConnectionFactory,RabbitMqConsumer,RabbitMqProducer, IRabbitMqConnectionConfig, RabbitMqSingletonConnectionFactory} from "../index";
-import {ConsoleLogger} from "rokot-log";
+// tslint:disable:no-unused-expression
 import * as BluebirdPromise from "bluebird";
-import {DefaultQueueNameConfig} from "../common";
-import { connect } from "amqplib";
+import { ConsoleLogger } from "rokot-log";
+import * as sinon from "sinon";
+import { DefaultQueueNameConfig } from "../common";
+import { IRabbitMqConnectionConfig, RabbitMqConnectionFactory, RabbitMqConsumer, RabbitMqProducer, RabbitMqSingletonConnectionFactory } from "../index";
+import { expect } from "./chai";
 
 const logger = ConsoleLogger.create("test", { level: "trace" });
 const config: IRabbitMqConnectionConfig = { host: "localhost", port: 5672 };
@@ -19,19 +19,23 @@ interface IMessage{
 describe("RabbitMqSingletonConnectionFactory Test", () => {
 
   it("Singleton Connection Factory should return singleton connection", async () => {
-    var f = new RabbitMqSingletonConnectionFactory(logger, config);
-    const connections = await Promise.all([f.create(),f.create(),f.create()])
+    const factory = new RabbitMqSingletonConnectionFactory(logger, config);
+    const connections = await Promise.all([
+      factory.create(),
+      factory.create(),
+      factory.create()]);
+
     expect(connections).to.exist;
     expect(connections.length).to.eq(3);
 
-    for (let connection of connections) {
+    for (const connection of connections) {
       expect(connection).to.exist;
       // Since the connection is a singleton, all instances of the connection should be the same object
       expect(connections[0]).to.equal(connection);
     }
 
-  })
-})
+  });
+});
 
 describe("Invalid configuration", () => {
 
@@ -45,26 +49,26 @@ describe("Invalid configuration", () => {
       expect(v).to.exist;
       expect(v.code).to.eq("ECONNREFUSED");
     });
-  })
+  });
 
   it("RabbitMqConsumer: Invalid Connection config should fail subscribe", () => {
-    const consumer = new RabbitMqConsumer(logger, factory)
+    const consumer = new RabbitMqConsumer(logger, factory);
     return expect(consumer.subscribe(queueName, m => {})).to.eventually.be.rejected.then(v => {
       expect(v).to.exist;
       expect(v.code).to.eq("ECONNREFUSED");
     });
-  })
+  });
 
   it("RabbitMqProducer: Invalid Connection config should fail publish", () => {
-    const producer = new RabbitMqProducer(logger,factory)
+    const producer = new RabbitMqProducer(logger, factory);
     return expect(producer.publish(queueName, {})).to.eventually.be.rejected.then(v => {
       expect(v).to.exist;
       expect(v.code).to.eq("ECONNREFUSED");
     });
-  })
+  });
 
-  }
-)
+  },
+);
 
 describe("Valid configuration", () => {
 
@@ -137,7 +141,7 @@ describe("Valid configuration", () => {
         producer.publish<IMessage>(queueName, msg),
       ]);
 
-      const channels: Array<any> = (connection as any).connection.channels;
+      const channels: any[] = (connection as any).connection.channels;
       // amqp.node doesn't remove empty channels, it just leaves a null in the array - see https://github.com/squaremo/amqp.node/blob/master/lib/connection.js#L438
       const openChannels = channels.filter(channel => channel !== null);
       // There will always be one open channel to manage the connection
@@ -155,7 +159,7 @@ describe("Valid configuration", () => {
       channel.deleteExchange(queueConfig.dlx),
       channel.deleteQueue(queueConfig.dlq),
       channel.deleteQueue(queueConfig.name),
-    ])
+    ]);
     connection.close();
   });
-})
+});
