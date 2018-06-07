@@ -138,7 +138,10 @@ describe("Valid configuration", () => {
       ]);
 
       const channels: Array<any> = (connection as any).connection.channels;
-      expect(channels.length).to.equal(1);
+      // amqp.node doesn't remove empty channels, it just leaves a null in the array - see https://github.com/squaremo/amqp.node/blob/master/lib/connection.js#L438
+      const openChannels = channels.filter(channel => channel !== null);
+      // There will always be one open channel to manage the connection
+      expect(openChannels.length).to.equal(1);
     });
   });
 
