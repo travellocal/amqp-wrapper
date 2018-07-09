@@ -8,23 +8,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const chai_1 = require("./chai");
-const sinon = require("sinon");
-const index_1 = require("../index");
-const rokot_log_1 = require("rokot-log");
 const BluebirdPromise = require("bluebird");
+const rokot_log_1 = require("rokot-log");
+const sinon = require("sinon");
 const common_1 = require("../common");
+const index_1 = require("../index");
+const chai_1 = require("./chai");
 const logger = rokot_log_1.ConsoleLogger.create("test", { level: "trace" });
 const config = { host: "localhost", port: 5672 };
 const invalidConfig = { host: "localhost", port: 5670 };
 const queueName = "TestPC";
 describe("RabbitMqSingletonConnectionFactory Test", () => {
     it("Singleton Connection Factory should return singleton connection", () => __awaiter(this, void 0, void 0, function* () {
-        var f = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
-        const connections = yield Promise.all([f.create(), f.create(), f.create()]);
+        const factory = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
+        const connections = yield Promise.all([
+            factory.create(),
+            factory.create(),
+            factory.create()
+        ]);
         chai_1.expect(connections).to.exist;
         chai_1.expect(connections.length).to.eq(3);
-        for (let connection of connections) {
+        for (const connection of connections) {
             chai_1.expect(connection).to.exist;
             chai_1.expect(connections[0]).to.equal(connection);
         }

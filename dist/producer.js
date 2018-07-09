@@ -8,8 +8,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const common_1 = require("./common");
 const childLogger_1 = require("./childLogger");
+const common_1 = require("./common");
 class RabbitMqProducer {
     constructor(logger, connectionFactory) {
         this.logger = logger;
@@ -28,18 +28,19 @@ class RabbitMqProducer {
                 return Promise.reject(new Error("Unable to send message"));
             }
             this.logger.trace("message sent to queue '%s' (%j)", queueConfig.name, message);
+            yield channel.close();
         });
     }
     getMessageBuffer(message) {
-        return new Buffer(JSON.stringify(message), 'utf8');
+        return new Buffer(JSON.stringify(message), "utf8");
     }
     getQueueSettings(deadletterExchangeName) {
         return {
             durable: true,
             autoDelete: false,
             arguments: {
-                'x-dead-letter-exchange': deadletterExchangeName
-            }
+                "x-dead-letter-exchange": deadletterExchangeName,
+            },
         };
     }
 }

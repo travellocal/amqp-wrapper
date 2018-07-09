@@ -1,8 +1,8 @@
 /// <reference types="node" />
 import * as amqp from "amqplib";
-import { IRabbitMqConnectionFactory } from "./connectionFactory";
 import { Logger } from "bunyan";
 import { IQueueNameConfig } from "./common";
+import { IRabbitMqConnectionFactory } from "./connectionFactory";
 export declare class RabbitMqProducer {
     private logger;
     private connectionFactory;
