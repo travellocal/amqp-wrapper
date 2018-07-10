@@ -1,8 +1,15 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const Promise = require("bluebird");
-const common_1 = require("./common");
 const childLogger_1 = require("./childLogger");
+const common_1 = require("./common");
 class RabbitMqConsumer {
     constructor(logger, connectionFactory) {
         this.logger = logger;
@@ -10,13 +17,13 @@ class RabbitMqConsumer {
         this.logger = childLogger_1.createChildLogger(logger, "RabbitMqConsumer");
     }
     subscribe(queue, action) {
-        const queueConfig = common_1.asQueueNameConfig(queue);
-        return this.connectionFactory.create()
-            .then(connection => connection.createChannel())
-            .then(channel => {
+        return __awaiter(this, void 0, void 0, function* () {
+            const queueConfig = common_1.asQueueNameConfig(queue);
+            const connection = yield this.connectionFactory.create();
+            const channel = yield connection.createChannel();
             this.logger.trace("got channel for queue '%s'", queueConfig.name);
-            return this.setupChannel(channel, queueConfig)
-                .then(() => this.subscribeToChannel(channel, queueConfig, action));
+            yield this.setupChannel(channel, queueConfig);
+            return this.subscribeToChannel(channel, queueConfig, action);
         });
     }
     setupChannel(channel, queueConfig) {
@@ -24,50 +31,52 @@ class RabbitMqConsumer {
         return Promise.all(this.getChannelSetup(channel, queueConfig));
     }
     subscribeToChannel(channel, queueConfig, action) {
-        this.logger.trace("subscribing to queue '%s'", queueConfig.name);
-        return channel.consume(queueConfig.name, (message) => {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.logger.trace("subscribing to queue '%s'", queueConfig.name);
             let msg;
-            Promise.try(() => {
-                msg = this.getMessageObject(message);
-                this.logger.trace("message arrived from queue '%s' (%j)", queueConfig.name, msg);
-                return action(msg);
-            }).then(() => {
-                this.logger.trace("message processed from queue '%s' (%j)", queueConfig.name, msg);
-                channel.ack(message);
-            }).catch((err) => {
-                this.logger.error(err, "message processing failed from queue '%j' (%j)", queueConfig, msg);
-                channel.nack(message, false, false);
-            });
-        }).then(opts => {
+            const opts = yield channel.consume(queueConfig.name, (message) => __awaiter(this, void 0, void 0, function* () {
+                try {
+                    msg = this.getMessageObject(message);
+                    this.logger.trace("message arrived from queue '%s' (%j)", queueConfig.name, msg);
+                    yield action(msg);
+                    this.logger.trace("message processed from queue '%s' (%j)", queueConfig.name, msg);
+                    channel.ack(message);
+                }
+                catch (err) {
+                    this.logger.error(err, "message processing failed from queue '%j' (%j)", queueConfig, msg);
+                    channel.nack(message, false, false);
+                }
+            }));
             this.logger.trace("subscribed to queue '%s' (%s)", queueConfig.name, opts.consumerTag);
-            return (() => {
+            const disposer = () => {
                 this.logger.trace("disposing subscriber to queue '%s' (%s)", queueConfig.name, opts.consumerTag);
-                return Promise.resolve(channel.cancel(opts.consumerTag)).return();
-            });
+                return Promise.resolve(channel.cancel(opts.consumerTag));
+            };
+            return disposer;
         });
     }
     getMessageObject(message) {
-        return JSON.parse(message.content.toString('utf8'));
+        return JSON.parse(message.content.toString("utf8"));
     }
     getChannelSetup(channel, queueConfig) {
         return [
             channel.assertQueue(queueConfig.name, this.getQueueSettings(queueConfig.dlx)),
             channel.assertQueue(queueConfig.dlq, this.getDLSettings()),
-            channel.assertExchange(queueConfig.dlx, 'fanout', this.getDLSettings()),
-            channel.bindQueue(queueConfig.dlq, queueConfig.dlx, '*')
+            channel.assertExchange(queueConfig.dlx, "fanout", this.getDLSettings()),
+            channel.bindQueue(queueConfig.dlq, queueConfig.dlx, "*")
         ];
     }
     getQueueSettings(deadletterExchangeName) {
-        var settings = this.getDLSettings();
+        const settings = this.getDLSettings();
         settings.arguments = {
-            'x-dead-letter-exchange': deadletterExchangeName
+            "x-dead-letter-exchange": deadletterExchangeName,
         };
         return settings;
     }
     getDLSettings() {
         return {
             durable: true,
-            autoDelete: false
+            autoDelete: false,
         };
     }
 }

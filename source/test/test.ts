@@ -1,5 +1,4 @@
 // tslint:disable:no-unused-expression
-import * as BluebirdPromise from "bluebird";
 import { ConsoleLogger } from "rokot-log";
 import * as sinon from "sinon";
 import { DefaultQueueNameConfig } from "../common";
@@ -101,14 +100,15 @@ describe("Valid configuration", () => {
     });
 
     it("should recieve message from Producer", async () => {
-      const spy = sinon.spy()
+      const spy = sinon.spy();
       const disposer = await consumer.subscribe<IMessage>(queueName, spy);
       const producer = new RabbitMqProducer(logger, factory);
       const msg: IMessage = {data: "time", value: new Date().getTime()};
 
       await expect(producer.publish<IMessage>(queueName, msg)).to.eventually.be.fulfilled;
       // Welcome to integration testing - we need to wait for the message to actually be sent through RabbitMQ
-      await BluebirdPromise.delay(500);
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       expect(spy.callCount).to.be.eq(1, "Consumer spy should have been called once");
       sinon.assert.calledWithExactly(spy, msg);
@@ -117,12 +117,13 @@ describe("Valid configuration", () => {
     });
 
     it("should DLQ message from Producer if action fails", async () => {
-      const disposer = await consumer.subscribe<IMessage>(queueName, m => BluebirdPromise.reject(new Error("A fake error that should put messages on the DLQ")));
+      const disposer = await consumer.subscribe<IMessage>(queueName, m => Promise.reject(new Error("A fake error that should put messages on the DLQ")));
       const producer = new RabbitMqProducer(logger, factory);
       const msg: IMessage = {data: "time", value: new Date().getTime()};
 
       await producer.publish<IMessage>(queueName, msg);
-      await BluebirdPromise.delay(500);
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       disposer();
     });
@@ -155,7 +156,7 @@ describe("Valid configuration", () => {
     const connection = await factory.create();
     const channel = await connection.createChannel();
     // After the tests, clear out the queue, as well as its dead letter queue, from RabbitMQ
-    await BluebirdPromise.all([
+    await Promise.all([
       channel.deleteExchange(queueConfig.dlx),
       channel.deleteQueue(queueConfig.dlq),
       channel.deleteQueue(queueConfig.name),

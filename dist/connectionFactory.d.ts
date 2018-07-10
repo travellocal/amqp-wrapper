@@ -1,7 +1,5 @@
-/// <reference types="bluebird" />
 import * as amqp from "amqplib";
 import { Logger } from "bunyan";
-import * as Promise from "bluebird";
 export interface IRabbitMqConnectionFactory {
     create(): Promise<amqp.Connection>;
 }

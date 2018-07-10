@@ -1,12 +1,8 @@
-/// <reference types="bluebird" />
 import * as amqp from "amqplib";
-import { IRabbitMqConnectionFactory } from "./connectionFactory";
 import { Logger } from "bunyan";
-import * as Promise from "bluebird";
 import { IQueueNameConfig } from "./common";
-export interface IRabbitMqConsumerDisposer {
-    (): Promise<void>;
-}
+import { IRabbitMqConnectionFactory } from "./connectionFactory";
+export declare type IRabbitMqConsumerDisposer = () => Promise<any>;
 export declare class RabbitMqConsumer {
     private logger;
     private connectionFactory;
@@ -15,7 +11,7 @@ export declare class RabbitMqConsumer {
     private setupChannel<T>(channel, queueConfig);
     private subscribeToChannel<T>(channel, queueConfig, action);
     protected getMessageObject<T>(message: amqp.Message): T;
-    protected getChannelSetup(channel: amqp.Channel, queueConfig: IQueueNameConfig): Promise<amqp.Replies.Empty>[];
+    protected getChannelSetup(channel: amqp.Channel, queueConfig: IQueueNameConfig): any[];
     protected getQueueSettings(deadletterExchangeName: string): amqp.Options.AssertQueue;
     protected getDLSettings(): amqp.Options.AssertQueue;
 }

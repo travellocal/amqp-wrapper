@@ -8,7 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const BluebirdPromise = require("bluebird");
 const rokot_log_1 = require("rokot-log");
 const sinon = require("sinon");
 const common_1 = require("../common");
@@ -88,17 +87,17 @@ describe("Valid configuration", () => {
             const producer = new index_1.RabbitMqProducer(logger, factory);
             const msg = { data: "time", value: new Date().getTime() };
             yield chai_1.expect(producer.publish(queueName, msg)).to.eventually.be.fulfilled;
-            yield BluebirdPromise.delay(500);
+            yield new Promise((resolve) => setTimeout(resolve, 500));
             chai_1.expect(spy.callCount).to.be.eq(1, "Consumer spy should have been called once");
             sinon.assert.calledWithExactly(spy, msg);
             disposer();
         }));
         it("should DLQ message from Producer if action fails", () => __awaiter(this, void 0, void 0, function* () {
-            const disposer = yield consumer.subscribe(queueName, m => BluebirdPromise.reject(new Error("A fake error that should put messages on the DLQ")));
+            const disposer = yield consumer.subscribe(queueName, m => Promise.reject(new Error("A fake error that should put messages on the DLQ")));
             const producer = new index_1.RabbitMqProducer(logger, factory);
             const msg = { data: "time", value: new Date().getTime() };
             yield producer.publish(queueName, msg);
-            yield BluebirdPromise.delay(500);
+            yield new Promise((resolve) => setTimeout(resolve, 500));
             disposer();
         }));
     });
@@ -122,7 +121,7 @@ describe("Valid configuration", () => {
         const queueConfig = new common_1.DefaultQueueNameConfig(queueName);
         const connection = yield factory.create();
         const channel = yield connection.createChannel();
-        yield BluebirdPromise.all([
+        yield Promise.all([
             channel.deleteExchange(queueConfig.dlx),
             channel.deleteQueue(queueConfig.dlq),
             channel.deleteQueue(queueConfig.name),
