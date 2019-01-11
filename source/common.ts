@@ -5,11 +5,11 @@ export interface IQueueNameConfig {
 }
 
 export class DefaultQueueNameConfig implements IQueueNameConfig{
-  dlq: string;
-  dlx: string;
+  public dlq: string;
+  public dlx: string;
   constructor(public name: string){
     this.dlq = `${name}.DLQ`;
-    this.dlx = `${this.dlq}.Exchange`
+    this.dlx = `${this.dlq}.Exchange`;
   }
 }
 
