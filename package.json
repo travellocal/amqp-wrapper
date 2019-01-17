@@ -1,7 +1,7 @@
 {
-  "name": "rokot-mq-rabbit",
-  "version": "0.1.4",
-  "description": "Rocketmakers Rokot Platform - RabbitMq Producer and Consumer",
+  "name": "@travellocal/amqp-wrapper",
+  "version": "0.2.0",
+  "description": "TravelLocal's amqp wrapper for publishing and consuming messages",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "scripts": {
@@ -12,7 +12,7 @@
     "typescript",
     "rabbitmq"
   ],
-  "author": "developers@rocketmakers.com",
+  "author": "developers@travellocal.com",
   "license": "MIT",
   "dependencies": {
     "amqplib": "^0.5.2",
@@ -33,12 +33,12 @@
     "sinon": "^5.0.3",
     "typescript": "~2.8.3"
   },
-  "homepage": "https://github.com/Rocketmakers/rokot-mq-rabbit",
+  "homepage": "https://github.com/travellocal/amqp-wrapper",
   "repository": {
     "type": "git",
-    "url": "git://git@github.com:Rocketmakers/rokot-mq-rabbit.git"
+    "url": "git://git@github.com:travellocal/amqp-wrapper.git"
   },
   "bugs": {
-    "url": "https://github.com/Rocketmakers/rokot-mq-rabbit/issues"
+    "url": "https://github.com/travellocal/amqp-wrapper/issues"
   }
 }
