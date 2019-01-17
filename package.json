@@ -2,8 +2,8 @@
   "name": "@travellocal/amqp-wrapper",
   "version": "0.2.1",
   "description": "TravelLocal's amqp wrapper for publishing and consuming messages",
-  "main": "./dist/index.js",
-  "typings": "./dist/index.d.ts",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p source/tsconfig.json -d",
     "test": "npm run build && mocha"
