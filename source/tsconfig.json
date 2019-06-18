@@ -1,12 +1,11 @@
 {
     "compileOnSave": false,
     "compilerOptions": {
-        "target": "es5",
+        "target": "es6",
         "module": "commonjs",
         "isolatedModules": false,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": false,
-        "jsx": "react",
         "declaration": false,
         "noImplicitAny": false,
         "removeComments": true,

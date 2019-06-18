@@ -1,6 +1,6 @@
+/* tslint:disable:max-classes-per-file */
 import * as amqp from "amqplib";
 import {Logger} from "bunyan";
-import * as Promise from "bluebird";
 import {createChildLogger} from "./childLogger";
 
 export interface IRabbitMqConnectionFactory {
@@ -25,23 +25,26 @@ export class RabbitMqConnectionFactory implements IRabbitMqConnectionFactory {
     this.logger = createChildLogger(logger, "RabbitMqConnectionFactory");
   }
 
-  create(): Promise<amqp.Connection> {
+  public async create(): Promise<amqp.Connection> {
     this.logger.debug("connecting to %s", this.connection);
-    return Promise.resolve(amqp.connect(this.connection)).catch(err => {
+    try {
+      return await amqp.connect(this.connection);
+    } catch (err) {
       this.logger.error("failed to create connection '%s'", this.connection);
       return Promise.reject(err);
-    });
+    }
   }
 }
 
 export class RabbitMqSingletonConnectionFactory implements IRabbitMqConnectionFactory {
   private connection: string;
   private promise: Promise<amqp.Connection>;
+
   constructor(private logger: Logger, config: IRabbitMqConnectionConfig | string) {
     this.connection = isConnectionConfig(config) ? `amqp://${config.host}:${config.port}` : config;
   }
 
-  create(): Promise<amqp.Connection> {
+  public create(): Promise<amqp.Connection> {
     if (this.promise) {
       this.logger.trace("reusing connection to %s", this.connection);
       return this.promise;

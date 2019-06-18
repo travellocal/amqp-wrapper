@@ -1,9 +1,9 @@
 {
-  "name": "rokot-mq-rabbit",
-  "version": "0.1.4",
-  "description": "Rocketmakers Rokot Platform - RabbitMq Producer and Consumer",
-  "main": "./dist/index.js",
-  "typings": "./dist/index.d.ts",
+  "name": "@travellocal/amqp-wrapper",
+  "version": "0.2.1",
+  "description": "TravelLocal's amqp wrapper for publishing and consuming messages",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p source/tsconfig.json -d",
     "test": "npm run build && mocha"
@@ -12,24 +12,33 @@
     "typescript",
     "rabbitmq"
   ],
-  "author": "developers@rocketmakers.com",
+  "author": "developers@travellocal.com",
   "license": "MIT",
   "dependencies": {
-    "amqplib": "^0.4.0",
-    "bluebird": "^3.3.5",
+    "amqplib": "^0.5.2",
     "bunyan": "^1.8.0"
   },
   "devDependencies": {
+    "@types/amqplib": "^0.5.7",
+    "@types/chai": "^4.1.3",
+    "@types/chai-as-promised": "^7.1.0",
+    "@types/chai-things": "^0.0.33",
+    "@types/mocha": "^5.2.0",
+    "@types/sinon": "^4.0.0",
+    "chai": "^4.1.2",
+    "chai-as-promised": "^7.1.1",
+    "chai-things": "^0.2.0",
+    "mocha": "^5.1.1",
     "rokot-log": "^0.1.0",
-    "rokot-test": "^0.1.3",
-    "typescript": "^1.8.7"
+    "sinon": "^5.0.3",
+    "typescript": "~2.8.3"
   },
-  "homepage": "https://github.com/Rocketmakers/rokot-mq-rabbit",
+  "homepage": "https://github.com/travellocal/amqp-wrapper",
   "repository": {
     "type": "git",
-    "url": "git://git@github.com:Rocketmakers/rokot-mq-rabbit.git"
+    "url": "git://git@github.com:travellocal/amqp-wrapper.git"
   },
   "bugs": {
-    "url": "https://github.com/Rocketmakers/rokot-mq-rabbit/issues"
+    "url": "https://github.com/travellocal/amqp-wrapper/issues"
   }
 }
