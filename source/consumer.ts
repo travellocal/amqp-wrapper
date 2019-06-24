@@ -1,5 +1,5 @@
 import * as amqp from "amqplib";
-import {Logger} from "bunyan";
+import * as bunyan from "bunyan";
 import {createChildLogger} from "./childLogger";
 import {asQueueNameConfig, IQueueNameConfig} from "./common";
 import {IRabbitMqConnectionFactory} from "./connectionFactory";
@@ -7,7 +7,7 @@ import {IRabbitMqConnectionFactory} from "./connectionFactory";
 export type IRabbitMqConsumerDisposer = () => Promise<any>;
 
 export class RabbitMqConsumer {
-  constructor(private logger: Logger, private connectionFactory: IRabbitMqConnectionFactory) {
+  constructor(private logger: bunyan, private connectionFactory: IRabbitMqConnectionFactory) {
     this.logger = createChildLogger(logger, "RabbitMqConsumer");
   }
 
@@ -64,7 +64,7 @@ export class RabbitMqConsumer {
       channel.assertQueue(queueConfig.name, this.getQueueSettings(queueConfig.dlx)),
       channel.assertQueue(queueConfig.dlq, this.getDLSettings()),
       channel.assertExchange(queueConfig.dlx, "fanout", this.getDLSettings()),
-      channel.bindQueue(queueConfig.dlq, queueConfig.dlx, "*")
+      channel.bindQueue(queueConfig.dlq, queueConfig.dlx, "*"),
     ] as any[]; // This is because we're returning an array of Bluebird promises, which TypeScript hates
   }
 

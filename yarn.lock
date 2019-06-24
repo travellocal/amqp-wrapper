@@ -20,6 +20,13 @@
   version "3.5.20"
   resolved "https://registry.yarnpkg.com/@types/bluebird/-/bluebird-3.5.20.tgz#f6363172add6f4eabb8cada53ca9af2781e8d6a1"
 
+"@types/bunyan@^1.8.6":
+  version "1.8.6"
+  resolved "https://registry.yarnpkg.com/@types/bunyan/-/bunyan-1.8.6.tgz#6527641cca30bedec5feb9ab527b7803b8000582"
+  integrity sha512-YiozPOOsS6bIuz31ilYqR5SlLif4TBWsousN2aCWLi5233nZSX19tFbcQUPdR7xJ8ypPyxkCGNxg0CIV5n9qxQ==
+  dependencies:
+    "@types/node" "*"
+
 "@types/chai-as-promised@^7.1.0":
   version "7.1.0"
   resolved "https://registry.yarnpkg.com/@types/chai-as-promised/-/chai-as-promised-7.1.0.tgz#010b04cde78eacfb6e72bfddb3e58fe23c2e78b9"
@@ -117,7 +124,7 @@ bunyan-prettystream@^0.1.3:
   version "0.1.3"
   resolved "https://registry.yarnpkg.com/bunyan-prettystream/-/bunyan-prettystream-0.1.3.tgz#6c3b713266f6ad32007c7b6ab1e998a245349d98"
 
-bunyan@^1.5.1, bunyan@^1.8.0:
+bunyan@^1.8.0, bunyan@^1.8.12:
   version "1.8.12"
   resolved "https://registry.yarnpkg.com/bunyan/-/bunyan-1.8.12.tgz#f150f0f6748abdd72aeae84f04403be2ef113797"
   optionalDependencies:
@@ -370,11 +377,12 @@ rimraf@~2.4.0:
   dependencies:
     glob "^6.0.1"
 
-rokot-log@^0.1.0:
-  version "0.1.6"
-  resolved "https://registry.yarnpkg.com/rokot-log/-/rokot-log-0.1.6.tgz#79541c1ef76dafc2117e2bd13a84e2f236ff2847"
+rokot-log@^0.3.2:
+  version "0.3.2"
+  resolved "https://registry.yarnpkg.com/rokot-log/-/rokot-log-0.3.2.tgz#f90d3445147fafbba5af9c2c5c855652fb5ffeed"
+  integrity sha512-Z6hTQIitRCsJVO6Ra6olpjXTB9X6Rft+JFFmFjvMIjwOlkH6RiTBWFJu6KS7/fy4P+cl2tMTPZyTm4agypWA/Q==
   dependencies:
-    bunyan "^1.5.1"
+    bunyan "^1.8.12"
     bunyan-logstash-amqp "1.0.5"
     bunyan-prettystream "^0.1.3"
 

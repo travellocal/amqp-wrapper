@@ -1,11 +1,11 @@
 import * as amqp from "amqplib";
-import { Logger } from "bunyan";
+import * as bunyan from "bunyan";
 import { createChildLogger } from "./childLogger";
 import { asQueueNameConfig, IQueueNameConfig } from "./common";
 import {IRabbitMqConnectionFactory} from "./connectionFactory";
 
 export class RabbitMqProducer {
-  constructor(private logger: Logger, private connectionFactory: IRabbitMqConnectionFactory) {
+  constructor(private logger: bunyan, private connectionFactory: IRabbitMqConnectionFactory) {
     this.logger = createChildLogger(logger, "RabbitMqProducer");
   }
 

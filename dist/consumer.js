@@ -63,7 +63,7 @@ class RabbitMqConsumer {
             channel.assertQueue(queueConfig.name, this.getQueueSettings(queueConfig.dlx)),
             channel.assertQueue(queueConfig.dlq, this.getDLSettings()),
             channel.assertExchange(queueConfig.dlx, "fanout", this.getDLSettings()),
-            channel.bindQueue(queueConfig.dlq, queueConfig.dlx, "*")
+            channel.bindQueue(queueConfig.dlq, queueConfig.dlx, "*"),
         ];
     }
     getQueueSettings(deadletterExchangeName) {
