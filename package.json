@@ -15,11 +15,11 @@
   "author": "developers@travellocal.com",
   "license": "MIT",
   "dependencies": {
+    "@types/amqplib": "^0.5.7",
     "amqplib": "^0.5.2",
     "bunyan": "^1.8.0"
   },
   "devDependencies": {
-    "@types/amqplib": "^0.5.7",
     "@types/chai": "^4.1.3",
     "@types/chai-as-promised": "^7.1.0",
     "@types/chai-things": "^0.0.33",
