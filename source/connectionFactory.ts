@@ -1,6 +1,6 @@
 /* tslint:disable:max-classes-per-file */
 import * as amqp from "amqplib";
-import {Logger} from "bunyan";
+import * as bunyan from "bunyan";
 import {createChildLogger} from "./childLogger";
 
 export interface IRabbitMqConnectionFactory {
@@ -20,7 +20,7 @@ function isConnectionConfig(config: IRabbitMqConnectionConfig | string): config 
 
 export class RabbitMqConnectionFactory implements IRabbitMqConnectionFactory {
   private connection: string;
-  constructor(private logger: Logger, config: IRabbitMqConnectionConfig | string) {
+  constructor(private logger: bunyan, config: IRabbitMqConnectionConfig | string) {
     this.connection = isConnectionConfig(config) ? `amqp://${config.host}:${config.port}` : config;
     this.logger = createChildLogger(logger, "RabbitMqConnectionFactory");
   }
@@ -40,7 +40,7 @@ export class RabbitMqSingletonConnectionFactory implements IRabbitMqConnectionFa
   private connection: string;
   private promise: Promise<amqp.Connection>;
 
-  constructor(private logger: Logger, config: IRabbitMqConnectionConfig | string) {
+  constructor(private logger: bunyan, config: IRabbitMqConnectionConfig | string) {
     this.connection = isConnectionConfig(config) ? `amqp://${config.host}:${config.port}` : config;
   }
 

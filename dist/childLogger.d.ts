@@ -1,2 +1,3 @@
+/// <reference types="bunyan" />
 import * as bunyan from "bunyan";
-export declare function createChildLogger(logger: bunyan.Logger, className: string): any;
+export declare function createChildLogger(logger: bunyan, className: string): bunyan;
