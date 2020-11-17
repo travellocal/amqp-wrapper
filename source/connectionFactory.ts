@@ -16,7 +16,7 @@ function isConnectionConfig(config: IRabbitMqConnectionConfig | string): config 
   return (config as IRabbitMqConnectionConfig).host !== undefined && (config as IRabbitMqConnectionConfig).port !== undefined;
 }
 
-class ConnectionFactoryBase {
+export class ConnectionFactoryBase {
 
   protected address: string;
   protected logger: bunyan;
@@ -46,14 +46,26 @@ export class RabbitMqConnectionFactory extends ConnectionFactoryBase implements 
 }
 
 export class RabbitMqSingletonConnectionFactory extends ConnectionFactoryBase implements IRabbitMqConnectionFactory {
-  private connection: amqp.Connection;
+  private connectionPromise: Promise<amqp.Connection>;
 
   public async create(): Promise<amqp.Connection> {
-    if (this.connection) {
+    // Check if we've started connecting elsewhere
+    if (this.connectionPromise) {
       this.logger.trace("reusing connection to %s", this.address);
     } else {
-      this.connection = await this._connect();
+        // Don't wait for the connection to be complete to assign it persistently
+        this.connectionPromise = this._connect();
+        const connection = await this.connectionPromise;
+        connection.on('error', this.handleConnectionFailure)
     }
-    return Promise.resolve(this.connection);
+    return this.connectionPromise;
   }
+
+  private handleConnectionFailure(err): void {
+    this.logger.error("Error is happening")
+    this.logger.error(err);
+    // Clear connection
+    this.connectionPromise = null;
+  }
+
 }
