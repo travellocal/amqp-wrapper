@@ -1,4 +1,3 @@
-/// <reference types="bunyan" />
 import * as amqp from "amqplib";
 import * as bunyan from "bunyan";
 export interface IRabbitMqConnectionFactory {
@@ -8,16 +7,17 @@ export interface IRabbitMqConnectionConfig {
     host: string;
     port: number;
 }
-export declare class RabbitMqConnectionFactory implements IRabbitMqConnectionFactory {
-    private logger;
-    private connection;
-    constructor(logger: bunyan, config: IRabbitMqConnectionConfig | string);
+export declare class ConnectionFactoryBase {
+    protected address: string;
+    protected logger: bunyan;
+    constructor(parentLogger: bunyan, config: IRabbitMqConnectionConfig | string);
+    protected _connect(): Promise<amqp.Connection>;
+}
+export declare class RabbitMqConnectionFactory extends ConnectionFactoryBase implements IRabbitMqConnectionFactory {
     create(): Promise<amqp.Connection>;
 }
-export declare class RabbitMqSingletonConnectionFactory implements IRabbitMqConnectionFactory {
-    private logger;
-    private connection;
-    private promise;
-    constructor(logger: bunyan, config: IRabbitMqConnectionConfig | string);
+export declare class RabbitMqSingletonConnectionFactory extends ConnectionFactoryBase implements IRabbitMqConnectionFactory {
+    private connectionPromise;
     create(): Promise<amqp.Connection>;
+    private handleConnectionFailure;
 }

@@ -1,9 +1,10 @@
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -18,7 +19,7 @@ const config = { host: "localhost", port: 5672 };
 const invalidConfig = { host: "localhost", port: 5670 };
 const queueName = "TestPC";
 describe("RabbitMqSingletonConnectionFactory Test", () => {
-    it("Singleton Connection Factory should return singleton connection", () => __awaiter(this, void 0, void 0, function* () {
+    it("Singleton Connection Factory should return singleton connection", () => __awaiter(void 0, void 0, void 0, function* () {
         const factory = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
         const connections = yield Promise.all([
             factory.create(),
@@ -67,21 +68,21 @@ describe("Valid configuration", () => {
             factory = new index_1.RabbitMqConnectionFactory(logger, config);
             consumer = new index_1.RabbitMqConsumer(logger, factory);
         });
-        it("should subscribe and dispose ok with simple queue name", () => __awaiter(this, void 0, void 0, function* () {
+        it("should subscribe and dispose ok with simple queue name", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
             const disposer = yield consumer.subscribe(queueName, spy);
             chai_1.expect(disposer, "disposer should exist").to.exist;
             chai_1.expect(spy.callCount).to.be.eq(0, "Consumer spy should not have been called");
             return chai_1.expect(disposer()).to.eventually.be.fulfilled;
         }));
-        it("should subscribe and dispose ok with queue config", () => __awaiter(this, void 0, void 0, function* () {
+        it("should subscribe and dispose ok with queue config", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
             const disposer = yield consumer.subscribe(new common_1.DefaultQueueNameConfig(queueName), spy);
             chai_1.expect(disposer, "disposer should exist").to.exist;
             chai_1.expect(spy.callCount).to.be.eq(0, "Consumer spy should not have been called");
             return chai_1.expect(disposer()).to.eventually.be.fulfilled;
         }));
-        it("should recieve message from Producer", () => __awaiter(this, void 0, void 0, function* () {
+        it("should recieve message from Producer", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
             const disposer = yield consumer.subscribe(queueName, spy);
             const producer = new index_1.RabbitMqProducer(logger, factory);
@@ -92,7 +93,7 @@ describe("Valid configuration", () => {
             sinon.assert.calledWithExactly(spy, msg);
             disposer();
         }));
-        it("should DLQ message from Producer if action fails", () => __awaiter(this, void 0, void 0, function* () {
+        it("should DLQ message from Producer if action fails", () => __awaiter(void 0, void 0, void 0, function* () {
             const disposer = yield consumer.subscribe(queueName, m => Promise.reject(new Error("A fake error that should put messages on the DLQ")));
             const producer = new index_1.RabbitMqProducer(logger, factory);
             const msg = { data: "time", value: new Date().getTime() };
@@ -102,7 +103,7 @@ describe("Valid configuration", () => {
         }));
     });
     describe("Producer", () => {
-        it("should not leave channels open", () => __awaiter(this, void 0, void 0, function* () {
+        it("should not leave channels open", () => __awaiter(void 0, void 0, void 0, function* () {
             const factory = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
             const producer = new index_1.RabbitMqProducer(logger, factory);
             const connection = yield factory.create();
@@ -116,7 +117,7 @@ describe("Valid configuration", () => {
             chai_1.expect(openChannels.length).to.equal(1);
         }));
     });
-    after(() => __awaiter(this, void 0, void 0, function* () {
+    after(() => __awaiter(void 0, void 0, void 0, function* () {
         const factory = new index_1.RabbitMqConnectionFactory(logger, config);
         const queueConfig = new common_1.DefaultQueueNameConfig(queueName);
         const connection = yield factory.create();

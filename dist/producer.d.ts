@@ -1,4 +1,3 @@
-/// <reference types="bunyan" />
 /// <reference types="node" />
 import * as amqp from "amqplib";
 import * as bunyan from "bunyan";
