@@ -56,7 +56,7 @@ export class RabbitMqSingletonConnectionFactory extends ConnectionFactoryBase im
         // Don't wait for the connection to be complete to assign it persistently
         this.connectionPromise = this._connect();
         const connection = await this.connectionPromise;
-        connection.on('error', this.handleConnectionFailure);
+        connection.on('error', (err) => this.handleConnectionFailure(err));
     }
     return this.connectionPromise;
   }
