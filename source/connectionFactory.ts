@@ -62,7 +62,7 @@ export class RabbitMqSingletonConnectionFactory extends ConnectionFactoryBase im
   }
 
   private handleConnectionFailure(err): void {
-    this.logger.error("Error is happening")
+    this.logger.error("Connection error - clearing connection.")
     this.logger.error(err);
     // Clear connection
     this.connectionPromise = null;

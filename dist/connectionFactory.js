@@ -56,7 +56,7 @@ class RabbitMqSingletonConnectionFactory extends ConnectionFactoryBase {
         });
     }
     handleConnectionFailure(err) {
-        this.logger.error("Error is happening");
+        this.logger.error("Connection error - clearing connection.");
         this.logger.error(err);
         this.connectionPromise = null;
     }
