@@ -4,6 +4,10 @@ import * as sinon from "sinon";
 import { DefaultQueueNameConfig } from "../common";
 import { IRabbitMqConnectionConfig, RabbitMqConnectionFactory, RabbitMqConsumer, RabbitMqProducer, RabbitMqSingletonConnectionFactory } from "../index";
 import { expect } from "./chai";
+import { EventEmitter } from "events";
+
+import * as amqp from "amqplib";
+
 
 const logger = ConsoleLogger.create("test", { level: "trace" });
 const config: IRabbitMqConnectionConfig = { host: "localhost", port: 5672 };
@@ -17,8 +21,12 @@ interface IMessage{
 
 describe("RabbitMqSingletonConnectionFactory Test", () => {
 
+  let factory: RabbitMqSingletonConnectionFactory;
+  beforeEach(() => {
+    factory = new RabbitMqSingletonConnectionFactory(logger, config);
+  });
+
   it("Singleton Connection Factory should return singleton connection", async () => {
-    const factory = new RabbitMqSingletonConnectionFactory(logger, config);
     const connections = await Promise.all([
       factory.create(),
       factory.create(),
@@ -33,6 +41,34 @@ describe("RabbitMqSingletonConnectionFactory Test", () => {
       expect(connections[0]).to.equal(connection);
     }
 
+  });
+
+  describe("connection error", () => {
+
+    let connectStub: sinon.SinonStub;
+    let mockConnection: EventEmitter;
+
+    beforeEach(() => {
+      // Create a mock error by replacing the connection with a generic event emitter - we can then force this to emit an error
+      mockConnection = new EventEmitter();
+      connectStub = sinon.stub(amqp, "connect");
+      connectStub.returns(mockConnection);
+    });
+
+    afterEach(() => {
+      connectStub.restore();
+    });
+
+    it("should log an error and clear connection when an error is thrown by the existing connection", async () => {
+
+      await factory.create();
+      expect(factory.connectionPromise).to.be.a('promise');
+      expect(factory.connectionPromise).to.eventually.equal(mockConnection);
+
+      mockConnection.emit('error', "I am an error object.")
+      // Connection should be cleared by error
+      expect(factory.connectionPromise).to.equal(null);
+    });
   });
 });
 

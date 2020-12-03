@@ -50,12 +50,13 @@ class RabbitMqSingletonConnectionFactory extends ConnectionFactoryBase {
             else {
                 this.connectionPromise = this._connect();
                 const connection = yield this.connectionPromise;
-                connection.on('error', this.handleConnectionFailure);
+                connection.on('error', this.handleConnectionFailure.bind(this));
             }
             return this.connectionPromise;
         });
     }
     handleConnectionFailure(err) {
+        console.log("Handler called");
         this.logger.error("Connection error - clearing connection.");
         this.logger.error(err);
         this.connectionPromise = null;

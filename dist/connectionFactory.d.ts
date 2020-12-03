@@ -17,7 +17,7 @@ export declare class RabbitMqConnectionFactory extends ConnectionFactoryBase imp
     create(): Promise<amqp.Connection>;
 }
 export declare class RabbitMqSingletonConnectionFactory extends ConnectionFactoryBase implements IRabbitMqConnectionFactory {
-    private connectionPromise;
+    connectionPromise: Promise<amqp.Connection>;
     create(): Promise<amqp.Connection>;
     private handleConnectionFailure;
 }

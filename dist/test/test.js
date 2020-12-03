@@ -14,13 +14,18 @@ const sinon = require("sinon");
 const common_1 = require("../common");
 const index_1 = require("../index");
 const chai_1 = require("./chai");
+const events_1 = require("events");
+const amqp = require("amqplib");
 const logger = rokot_log_1.ConsoleLogger.create("test", { level: "trace" });
 const config = { host: "localhost", port: 5672 };
 const invalidConfig = { host: "localhost", port: 5670 };
 const queueName = "TestPC";
 describe("RabbitMqSingletonConnectionFactory Test", () => {
+    let factory;
+    beforeEach(() => {
+        factory = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
+    });
     it("Singleton Connection Factory should return singleton connection", () => __awaiter(void 0, void 0, void 0, function* () {
-        const factory = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
         const connections = yield Promise.all([
             factory.create(),
             factory.create(),
@@ -33,6 +38,25 @@ describe("RabbitMqSingletonConnectionFactory Test", () => {
             chai_1.expect(connections[0]).to.equal(connection);
         }
     }));
+    describe("connection error", () => {
+        let connectStub;
+        let mockConnection;
+        beforeEach(() => {
+            mockConnection = new events_1.EventEmitter();
+            connectStub = sinon.stub(amqp, "connect");
+            connectStub.returns(mockConnection);
+        });
+        afterEach(() => {
+            connectStub.restore();
+        });
+        it("should log an error and clear connection when an error is thrown by the existing connection", () => __awaiter(void 0, void 0, void 0, function* () {
+            yield factory.create();
+            chai_1.expect(factory.connectionPromise).to.be.a('promise');
+            chai_1.expect(factory.connectionPromise).to.eventually.equal(mockConnection);
+            mockConnection.emit('error', "I am an error object.");
+            chai_1.expect(factory.connectionPromise).to.equal(null);
+        }));
+    });
 });
 describe("Invalid configuration", () => {
     let factory;
