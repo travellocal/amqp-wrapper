@@ -43,7 +43,34 @@ describe("RabbitMqSingletonConnectionFactory Test", () => {
 
   });
 
-  describe("connection error", () => {
+  describe("connection error on first connection attempt", () => {
+
+    let connectStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      connectStub = sinon.stub(amqp, "connect");
+      connectStub.rejects({
+        code: "ENOTFOUND",
+        syscall: "getaddrinfo",
+        host: "myaddress"
+      });
+    });
+
+    afterEach(() => {
+      connectStub.restore();
+    });
+
+    it("should throw an error and not set a persistent connection if it can't connect", async () => {
+
+      return expect(factory.create()).to.eventually.be.rejected.then(v => {
+        expect(v).to.exist;
+        expect(v.code).to.eq("ENOTFOUND");
+        expect(factory.connectionPromise).to.equal(null);
+      });
+    });
+  });
+
+  describe("connection error during operation", () => {
 
     let connectStub: sinon.SinonStub;
     let mockConnection: EventEmitter;
