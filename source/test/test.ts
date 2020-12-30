@@ -140,7 +140,7 @@ describe("Valid configuration", () => {
     let consumer: RabbitMqConsumer;
 
     beforeEach(() => {
-      factory = new RabbitMqConnectionFactory(logger, config);
+      factory = new RabbitMqSingletonConnectionFactory(logger, config);
       consumer = new RabbitMqConsumer(logger, factory);
     });
 
@@ -190,6 +190,78 @@ describe("Valid configuration", () => {
 
       disposer();
     });
+
+    it("should re-establish the connection and channel if there is a connection error", async () => {
+      const spy = sinon.spy();
+      const disposer = await consumer.subscribe<IMessage>(queueName, spy);
+      const firstConnection = consumer.connection;
+
+      // Force the connection to emit an error
+      consumer.connection.emit("error", new Error("Oh no, I'm a connection error!"))
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      expect(consumer.connection).to.exist;
+      expect(firstConnection).to.not.equal(consumer.connection);
+
+      disposer();
+    });
+
+    it("should not accumulate error handlers if there are multiple connection errors", async () => {
+      const spy = sinon.spy();
+      const disposer = await consumer.subscribe<IMessage>(queueName, spy);
+
+      // Force the connection to emit sequential errors
+      consumer.connection.emit("error", new Error("Oh no, I'm a connection error!"))
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      consumer.connection.emit("error", new Error("Oh no, a second connection error!"))
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      expect(consumer.connection).to.exist;
+      // One handler from the connection layer, one handler from the consumer layer
+      expect(consumer.connection.listenerCount("error")).to.equal(2);
+
+      disposer();
+    });
+
+
+
+    it("should receive messages from the queue before and after a connection error", async () => {
+      const spy = sinon.spy();
+      const disposer = await consumer.subscribe<IMessage>(queueName, spy);
+      const producer = new RabbitMqProducer(logger, factory);
+      const msgOne: IMessage = {data: "time", value: new Date().getTime()};
+
+      await expect(producer.publish<IMessage>(queueName, msgOne)).to.eventually.be.fulfilled;
+
+      // Wait for the message to be sent through rabbitMQ
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      expect(spy.callCount).to.be.eq(1, "Consumer spy should have been called once");
+
+      // Force the connection to emit an error
+      consumer.connection.emit("error", new Error("Oh no, I'm a connection error!"))
+
+      // Wait for the connection to be re-established
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const msgTwo: IMessage = {data: "time", value: new Date().getTime()};
+
+      await expect(producer.publish<IMessage>(queueName, msgTwo)).to.eventually.be.fulfilled;
+
+      // Wait for the message to be sent through rabbitMQ
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      expect(spy.callCount).to.be.eq(2, "Consumer spy should have been called twice");
+      sinon.assert.calledWith(spy.getCall(0), msgOne);
+      sinon.assert.calledWith(spy.getCall(1), msgTwo);
+
+      disposer();
+    });
+
   });
 
   describe ("Producer", () => {

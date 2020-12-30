@@ -11,52 +11,45 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const childLogger_1 = require("./childLogger");
 const common_1 = require("./common");
-class RabbitMqConsumer {
-    constructor(logger, connectionFactory) {
-        this.logger = logger;
-        this.connectionFactory = connectionFactory;
-        this.logger = childLogger_1.createChildLogger(logger, "RabbitMqConsumer");
+class Subscription {
+    constructor(parentLogger, queueConfig, action) {
+        this.queueConfig = queueConfig;
+        this.action = action;
+        this.logger = childLogger_1.createChildLogger(parentLogger, `${queueConfig.name} Subscription`);
     }
-    subscribe(queue, action) {
+    ;
+    attach(connection) {
         return __awaiter(this, void 0, void 0, function* () {
-            const queueConfig = common_1.asQueueNameConfig(queue);
-            const connection = yield this.connectionFactory.create();
-            const channel = yield connection.createChannel();
-            this.logger.trace("got channel for queue '%s'", queueConfig.name);
-            yield this.setupChannel(channel, queueConfig);
-            return this.subscribeToChannel(channel, queueConfig, action);
-        });
-    }
-    setupChannel(channel, queueConfig) {
-        this.logger.trace("setup '%j'", queueConfig);
-        return Promise.all(this.getChannelSetup(channel, queueConfig));
-    }
-    subscribeToChannel(channel, queueConfig, action) {
-        return __awaiter(this, void 0, void 0, function* () {
-            this.logger.trace("subscribing to queue '%s'", queueConfig.name);
+            yield this.establishChannel(connection);
             let msg;
-            const opts = yield channel.consume(queueConfig.name, (message) => __awaiter(this, void 0, void 0, function* () {
+            const queueName = this.queueConfig.name;
+            const opts = yield this.channel.consume(queueName, (message) => __awaiter(this, void 0, void 0, function* () {
                 try {
                     msg = this.getMessageObject(message);
-                    this.logger.trace("message arrived from queue '%s' (%j)", queueConfig.name, msg);
-                    yield action(msg);
-                    this.logger.trace("message processed from queue '%s' (%j)", queueConfig.name, msg);
-                    channel.ack(message);
+                    this.logger.trace(`Message arrived from queue ${queueName}: (${JSON.stringify(msg)})`);
+                    yield this.action(msg);
+                    this.logger.trace(`Message processed from queue ${queueName}: (${JSON.stringify(msg)})`);
+                    this.channel.ack(message);
                 }
                 catch (err) {
-                    this.logger.error(err, "message processing failed from queue '%j' (%j)", queueConfig, msg);
-                    channel.nack(message, false, false);
+                    this.logger.error(err, `Message processing failed from queue ${queueName}: (${JSON.stringify(msg)})`);
+                    this.channel.nack(message, false, false);
                 }
             }));
-            this.logger.trace("subscribed to queue '%s' (%s)", queueConfig.name, opts.consumerTag);
-            const disposer = () => {
-                this.logger.trace("disposing subscriber to queue '%s' (%s)", queueConfig.name, opts.consumerTag);
-                return Promise.resolve(channel.cancel(opts.consumerTag));
-            };
-            return disposer;
+            this.consumerTag = opts.consumerTag;
+            this.logger.trace(`Subscribing to queue ${queueName} (${opts.consumerTag})`);
+            return this.cancel.bind(this);
+        });
+    }
+    ;
+    cancel() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.logger.trace(`Cancelling existing channel for queue ${this.queueConfig.name} (${this.consumerTag})`);
+            this.channel.cancel(this.consumerTag);
         });
     }
     getMessageObject(message) {
+        this.logger.trace(`Parsing message: ${message}`);
         return JSON.parse(message.content.toString("utf8"));
     }
     getChannelSetup(channel, queueConfig) {
@@ -79,6 +72,66 @@ class RabbitMqConsumer {
             durable: true,
             autoDelete: false,
         };
+    }
+    establishChannel(connection) {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.logger.trace(`Establishing new channel to subscribe to queue ${this.queueConfig.name}`);
+            const channel = yield connection.createChannel();
+            yield Promise.all(this.getChannelSetup(channel, this.queueConfig));
+            this.channel = channel;
+        });
+    }
+}
+class RabbitMqConsumer {
+    constructor(parentLogger, connectionFactory) {
+        this.connectionFactory = connectionFactory;
+        this.subscriptions = {};
+        this.logger = childLogger_1.createChildLogger(parentLogger, "RabbitMqConsumer");
+    }
+    establishConnection() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.logger.trace("Establishing new connection for consumer.");
+            this.connection = yield this.connectionFactory.create();
+            if (this.connectionErrorHandler != null) {
+                try {
+                    this.logger.trace("Deregistering old error handler.");
+                    this.connection.removeListener("error", this.connectionErrorHandler);
+                }
+                catch (_a) {
+                    this.logger.warn("Unable to deregister old error handler. This may be because it was registered to an old connection.");
+                }
+            }
+            const connectionErrorHandler = this.handleConsumerConnectionFailure.bind(this);
+            this.logger.trace("Registering new error handler.");
+            this.connection.on("error", connectionErrorHandler);
+            this.connectionErrorHandler = connectionErrorHandler;
+        });
+    }
+    createSubscription(queueConfig, action) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const subscription = new Subscription(this.logger, queueConfig, action);
+            this.subscriptions[queueConfig.name] = subscription;
+            return subscription.attach(this.connection);
+        });
+    }
+    handleConsumerConnectionFailure() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.logger.error("Connection error - re-establishing connection and existing subscriptions.");
+            this.connection = null;
+            yield this.establishConnection();
+            for (const queueName in this.subscriptions) {
+                const subscripion = this.subscriptions[queueName];
+                yield subscripion.cancel();
+                yield subscripion.attach(this.connection);
+            }
+        });
+    }
+    subscribe(queue, action) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const queueConfig = common_1.asQueueNameConfig(queue);
+            yield this.establishConnection();
+            return this.createSubscription(queueConfig, action);
+        });
     }
 }
 exports.RabbitMqConsumer = RabbitMqConsumer;
