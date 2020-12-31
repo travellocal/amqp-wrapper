@@ -113,8 +113,8 @@ describe("Invalid configuration", () => {
     });
   });
 
-  it("RabbitMqConsumer: Invalid Connection config should fail subscribe", () => {
-    const consumer = new RabbitMqConsumer(logger, factory);
+  it("RabbitMqConsumer: Invalid Connection config should fail subscribe when exponential backoff is disabled", () => {
+    const consumer = new RabbitMqConsumer(logger, factory, 0);
     return expect(consumer.subscribe(queueName, m => {})).to.eventually.be.rejected.then(v => {
       expect(v).to.exist;
       expect(v.code).to.eq("ECONNREFUSED");

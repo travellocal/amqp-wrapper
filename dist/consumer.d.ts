@@ -20,13 +20,16 @@ declare class Subscription<T> {
 }
 export declare class RabbitMqConsumer {
     private connectionFactory;
+    private maxRetries;
+    private interval;
     private logger;
     private connectionErrorHandler;
     connection: amqp.Connection;
     subscriptions: {
         [key: string]: Subscription<any>;
     };
-    constructor(parentLogger: bunyan, connectionFactory: IRabbitMqConnectionFactory);
+    constructor(parentLogger: bunyan, connectionFactory: IRabbitMqConnectionFactory, maxRetries?: number);
+    private retryCreateConnection;
     private establishConnection;
     private createSubscription;
     private handleConsumerConnectionFailure;

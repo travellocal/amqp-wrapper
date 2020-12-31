@@ -11,6 +11,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const childLogger_1 = require("./childLogger");
 const common_1 = require("./common");
+const STARTING_INTERVAL = 1000;
+const MAX_INTERVAL = 30000;
+const timeout = (ms) => { return new Promise(resolve => setTimeout(resolve, ms)); };
 class Subscription {
     constructor(parentLogger, queueConfig, action) {
         this.queueConfig = queueConfig;
@@ -83,15 +86,49 @@ class Subscription {
     }
 }
 class RabbitMqConsumer {
-    constructor(parentLogger, connectionFactory) {
+    constructor(parentLogger, connectionFactory, maxRetries = null) {
         this.connectionFactory = connectionFactory;
+        this.maxRetries = maxRetries;
         this.subscriptions = {};
         this.logger = childLogger_1.createChildLogger(parentLogger, "RabbitMqConsumer");
+        this.interval = 0;
     }
+    retryCreateConnection() {
+        return __awaiter(this, void 0, void 0, function* () {
+            let retry = true;
+            let retries = 0;
+            while (retry) {
+                try {
+                    retries += 1;
+                    yield timeout(this.interval);
+                    const connection = yield this.connectionFactory.create();
+                    this.logger.trace(`Successfully connected after ${this.interval}ms.`);
+                    retry = false;
+                    retries = 0;
+                    this.interval = 0;
+                    return connection;
+                }
+                catch (err) {
+                    if (this.maxRetries != null && retries >= this.maxRetries) {
+                        this.logger.trace(`Attempted maximum number of allowed retries (${this.maxRetries}). Giving up.`);
+                        retry = false;
+                        retries = 0;
+                        this.interval = 0;
+                        throw err;
+                    }
+                    this.logger.trace(`Unable to connect after ${this.interval}ms.`);
+                    this.logger.warn(err);
+                    this.interval = Math.min(Math.max(STARTING_INTERVAL, this.interval * 2), MAX_INTERVAL);
+                    this.logger.trace(`Retrying after ${this.interval}ms.`);
+                }
+            }
+        });
+    }
+    ;
     establishConnection() {
         return __awaiter(this, void 0, void 0, function* () {
             this.logger.trace("Establishing new connection for consumer.");
-            this.connection = yield this.connectionFactory.create();
+            this.connection = yield this.retryCreateConnection();
             if (this.connectionErrorHandler != null) {
                 try {
                     this.logger.trace("Deregistering old error handler.");
