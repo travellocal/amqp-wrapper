@@ -58,7 +58,6 @@ class Subscription {
         });
     }
     getMessageObject(message) {
-        this.logger.trace(`Parsing message: ${message}`);
         return JSON.parse(message.content.toString("utf8"));
     }
     getChannelSetup(channel, queueConfig) {

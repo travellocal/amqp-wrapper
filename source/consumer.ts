@@ -76,7 +76,6 @@ class Subscription<T>{
   }
 
   protected getMessageObject<T>(message: amqp.Message) {
-    this.logger.trace(`Parsing message: ${message}`)
     return JSON.parse(message.content.toString("utf8")) as T;
   }
 
