@@ -66,7 +66,13 @@ class Subscription<T>{
    */
   public async cancel(): Promise<void> {
     this.logger.trace(`Cancelling existing channel for queue ${this.queueConfig.name} (${this.consumerTag})`);
-    this.channel.cancel(this.consumerTag);
+    try {
+      this.channel.cancel(this.consumerTag);
+    } catch (err) {
+      this.logger.warn(`Unable to cancel channel ${this.consumerTag}.`)
+      this.logger.error(err);
+
+    }
   }
 
   protected getMessageObject<T>(message: amqp.Message) {
@@ -145,10 +151,9 @@ export class RabbitMqConsumer {
           this.interval = 0;
           throw err;
         }
-        this.logger.trace(`Unable to connect after ${this.interval}ms.`)
-        this.logger.warn(err);
+        this.logger.trace(`Unable to connect after ${this.interval}ms. Retrying.`)
+        this.logger.error(err);
         this.interval = Math.min(Math.max(STARTING_INTERVAL, this.interval*2), MAX_INTERVAL);
-        this.logger.trace(`Retrying after ${this.interval}ms.`)
       }
     }
 
@@ -161,14 +166,12 @@ export class RabbitMqConsumer {
 
     if (this.connectionErrorHandler != null) {
       try {
-        this.logger.trace("Deregistering old error handler.")
         this.connection.removeListener("error", this.connectionErrorHandler)
       } catch {
         this.logger.warn("Unable to deregister old error handler. This may be because it was registered to an old connection.")
       }
     }
     const connectionErrorHandler = this.handleConsumerConnectionFailure.bind(this)
-    this.logger.trace("Registering new error handler.")
     this.connection.on("error", connectionErrorHandler);
     this.connectionErrorHandler = connectionErrorHandler;
   }

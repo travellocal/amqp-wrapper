@@ -21,7 +21,6 @@ class RabbitMqProducer {
         return __awaiter(this, void 0, void 0, function* () {
             const queueConfig = common_1.asQueueNameConfig(queue);
             const settings = this.getQueueSettings(queueConfig.dlx);
-            this.logger.trace("Establishing new connection for producer.");
             const connection = yield this.connectionFactory.create();
             const channel = yield connection.createChannel();
             yield channel.assertQueue(queueConfig.name, settings);

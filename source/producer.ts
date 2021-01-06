@@ -13,7 +13,6 @@ export class RabbitMqProducer {
     const queueConfig = asQueueNameConfig(queue);
     const settings = this.getQueueSettings(queueConfig.dlx);
 
-    this.logger.trace("Establishing new connection for producer.")
     const connection = await this.connectionFactory.create();
     const channel = await connection.createChannel();
 

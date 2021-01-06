@@ -48,7 +48,13 @@ class Subscription {
     cancel() {
         return __awaiter(this, void 0, void 0, function* () {
             this.logger.trace(`Cancelling existing channel for queue ${this.queueConfig.name} (${this.consumerTag})`);
-            this.channel.cancel(this.consumerTag);
+            try {
+                this.channel.cancel(this.consumerTag);
+            }
+            catch (err) {
+                this.logger.warn(`Unable to cancel channel ${this.consumerTag}.`);
+                this.logger.error(err);
+            }
         });
     }
     getMessageObject(message) {
@@ -116,10 +122,9 @@ class RabbitMqConsumer {
                         this.interval = 0;
                         throw err;
                     }
-                    this.logger.trace(`Unable to connect after ${this.interval}ms.`);
-                    this.logger.warn(err);
+                    this.logger.trace(`Unable to connect after ${this.interval}ms. Retrying.`);
+                    this.logger.error(err);
                     this.interval = Math.min(Math.max(STARTING_INTERVAL, this.interval * 2), MAX_INTERVAL);
-                    this.logger.trace(`Retrying after ${this.interval}ms.`);
                 }
             }
         });
@@ -131,7 +136,6 @@ class RabbitMqConsumer {
             this.connection = yield this.retryCreateConnection();
             if (this.connectionErrorHandler != null) {
                 try {
-                    this.logger.trace("Deregistering old error handler.");
                     this.connection.removeListener("error", this.connectionErrorHandler);
                 }
                 catch (_a) {
@@ -139,7 +143,6 @@ class RabbitMqConsumer {
                 }
             }
             const connectionErrorHandler = this.handleConsumerConnectionFailure.bind(this);
-            this.logger.trace("Registering new error handler.");
             this.connection.on("error", connectionErrorHandler);
             this.connectionErrorHandler = connectionErrorHandler;
         });
