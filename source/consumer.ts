@@ -67,7 +67,7 @@ class Subscription<T>{
   public async cancel(): Promise<void> {
     this.logger.trace(`Cancelling existing channel for queue ${this.queueConfig.name} (${this.consumerTag})`);
     try {
-      this.channel.cancel(this.consumerTag);
+      await this.channel.cancel(this.consumerTag);
     } catch (err) {
       this.logger.warn(`Unable to cancel channel ${this.consumerTag}.`)
       this.logger.error(err);
