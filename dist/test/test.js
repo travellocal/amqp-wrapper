@@ -117,7 +117,6 @@ describe("Valid configuration", () => {
         afterEach(() => __awaiter(void 0, void 0, void 0, function* () {
             const connection = yield factory.connectionPromise;
             yield connection.close();
-            logger.warn("Closed factory connection");
         }));
         it("should subscribe and dispose ok with simple queue name", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();

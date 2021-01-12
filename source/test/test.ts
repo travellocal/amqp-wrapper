@@ -156,7 +156,6 @@ describe("Valid configuration", () => {
     afterEach(async () => {
       const connection = await factory.connectionPromise;
       await connection.close();
-      logger.warn("Closed factory connection");
     });
 
     it("should subscribe and dispose ok with simple queue name", async () => {
