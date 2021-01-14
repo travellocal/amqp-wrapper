@@ -159,9 +159,9 @@ class RabbitMqConsumer {
             this.connection = null;
             yield this.establishConnection();
             for (const queueName in this.subscriptions) {
-                const subscripion = this.subscriptions[queueName];
-                yield subscripion.cancel();
-                yield subscripion.attach(this.connection);
+                const subscription = this.subscriptions[queueName];
+                yield subscription.cancel();
+                yield subscription.attach(this.connection);
             }
         });
     }

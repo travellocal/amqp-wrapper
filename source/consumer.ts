@@ -186,9 +186,9 @@ export class RabbitMqConsumer {
     this.connection = null;
     await this.establishConnection();
     for (const queueName in this.subscriptions) {
-      const subscripion = this.subscriptions[queueName];
-      await subscripion.cancel();
-      await subscripion.attach(this.connection);
+      const subscription = this.subscriptions[queueName];
+      await subscription.cancel();
+      await subscription.attach(this.connection);
     }
   }
 
