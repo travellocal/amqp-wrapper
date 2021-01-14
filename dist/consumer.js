@@ -49,7 +49,7 @@ class Subscription {
         return __awaiter(this, void 0, void 0, function* () {
             this.logger.trace(`Cancelling existing channel for queue ${this.queueConfig.name} (${this.consumerTag})`);
             try {
-                this.channel.cancel(this.consumerTag);
+                yield this.channel.cancel(this.consumerTag);
             }
             catch (err) {
                 this.logger.warn(`Unable to cancel channel ${this.consumerTag}.`);

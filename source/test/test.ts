@@ -1,4 +1,12 @@
 // tslint:disable:no-unused-expression
+
+// To help debug when the test fails to exit cleanly:
+// - run: yarn add --dev wtfnode
+// - uncomment the import of wtfnode below these comments
+// - uncomment this line at the bottom of this file: //  after(async () => wtf.dump());
+//
+// import * as wtf from "wtfnode";
+
 import { ConsoleLogger } from "rokot-log";
 import * as sinon from "sinon";
 import { DefaultQueueNameConfig } from "../common";
@@ -41,6 +49,7 @@ describe("RabbitMqSingletonConnectionFactory Test", () => {
       expect(connections[0]).to.equal(connection);
     }
 
+    await connections[0].close();
   });
 
   describe("connection error on first connection attempt", () => {
@@ -136,12 +145,17 @@ describe("Valid configuration", () => {
 
   describe ("Consumer", () => {
 
-    let factory: RabbitMqConnectionFactory;
+    let factory: RabbitMqSingletonConnectionFactory;
     let consumer: RabbitMqConsumer;
 
     beforeEach(() => {
       factory = new RabbitMqSingletonConnectionFactory(logger, config);
       consumer = new RabbitMqConsumer(logger, factory);
+    });
+
+    afterEach(async () => {
+      const connection = await factory.connectionPromise;
+      await connection.close();
     });
 
     it("should subscribe and dispose ok with simple queue name", async () => {
@@ -162,7 +176,7 @@ describe("Valid configuration", () => {
       return expect(disposer()).to.eventually.be.fulfilled;
     });
 
-    it("should recieve message from Producer", async () => {
+    it("should receive message from Producer", async () => {
       const spy = sinon.spy();
       const disposer = await consumer.subscribe<IMessage>(queueName, spy);
       const producer = new RabbitMqProducer(logger, factory);
@@ -176,7 +190,7 @@ describe("Valid configuration", () => {
       expect(spy.callCount).to.be.eq(1, "Consumer spy should have been called once");
       sinon.assert.calledWithExactly(spy, msg);
 
-      disposer();
+      await disposer();
     });
 
     it("should DLQ message from Producer if action fails", async () => {
@@ -188,7 +202,7 @@ describe("Valid configuration", () => {
 
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      disposer();
+      await disposer();
     });
 
     it("should re-establish the connection and channel if there is a connection error", async () => {
@@ -204,17 +218,23 @@ describe("Valid configuration", () => {
       expect(consumer.connection).to.exist;
       expect(firstConnection).to.not.equal(consumer.connection);
 
-      disposer();
+      await firstConnection.close();
+      await disposer();
     });
 
     it("should not accumulate error handlers if there are multiple connection errors", async () => {
       const spy = sinon.spy();
       const disposer = await consumer.subscribe<IMessage>(queueName, spy);
 
+      const errorConnections: amqp.Connection[] = [];
+      errorConnections.push(consumer.connection);
+
       // Force the connection to emit sequential errors
       consumer.connection.emit("error", new Error("Oh no, I'm a connection error!"))
 
       await new Promise((resolve) => setTimeout(resolve, 500));
+
+      errorConnections.push(consumer.connection);
 
       consumer.connection.emit("error", new Error("Oh no, a second connection error!"))
 
@@ -224,7 +244,8 @@ describe("Valid configuration", () => {
       // One handler from the connection layer, one handler from the consumer layer
       expect(consumer.connection.listenerCount("error")).to.equal(2);
 
-      disposer();
+      await Promise.all(errorConnections.map(c => c.close()));
+      await disposer();
     });
 
 
@@ -243,6 +264,7 @@ describe("Valid configuration", () => {
       expect(spy.callCount).to.be.eq(1, "Consumer spy should have been called once");
 
       // Force the connection to emit an error
+      const errorConnection = consumer.connection;
       consumer.connection.emit("error", new Error("Oh no, I'm a connection error!"))
 
       // Wait for the connection to be re-established
@@ -259,7 +281,8 @@ describe("Valid configuration", () => {
       sinon.assert.calledWith(spy.getCall(0), msgOne);
       sinon.assert.calledWith(spy.getCall(1), msgTwo);
 
-      disposer();
+      await errorConnection.close();
+      await disposer();
     });
 
   });
@@ -282,6 +305,8 @@ describe("Valid configuration", () => {
       const openChannels = channels.filter(channel => channel !== null);
       // There will always be one open channel to manage the connection
       expect(openChannels.length).to.equal(1);
+
+      await connection.close();
     });
   });
 
@@ -298,4 +323,6 @@ describe("Valid configuration", () => {
     ]);
     connection.close();
   });
+
+  // after(async () => wtf.dump());
 });

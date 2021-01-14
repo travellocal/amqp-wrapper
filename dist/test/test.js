@@ -37,6 +37,7 @@ describe("RabbitMqSingletonConnectionFactory Test", () => {
             chai_1.expect(connection).to.exist;
             chai_1.expect(connections[0]).to.equal(connection);
         }
+        yield connections[0].close();
     }));
     describe("connection error on first connection attempt", () => {
         let connectStub;
@@ -113,6 +114,10 @@ describe("Valid configuration", () => {
             factory = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
             consumer = new index_1.RabbitMqConsumer(logger, factory);
         });
+        afterEach(() => __awaiter(void 0, void 0, void 0, function* () {
+            const connection = yield factory.connectionPromise;
+            yield connection.close();
+        }));
         it("should subscribe and dispose ok with simple queue name", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
             const disposer = yield consumer.subscribe(queueName, spy);
@@ -127,7 +132,7 @@ describe("Valid configuration", () => {
             chai_1.expect(spy.callCount).to.be.eq(0, "Consumer spy should not have been called");
             return chai_1.expect(disposer()).to.eventually.be.fulfilled;
         }));
-        it("should recieve message from Producer", () => __awaiter(void 0, void 0, void 0, function* () {
+        it("should receive message from Producer", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
             const disposer = yield consumer.subscribe(queueName, spy);
             const producer = new index_1.RabbitMqProducer(logger, factory);
@@ -136,7 +141,7 @@ describe("Valid configuration", () => {
             yield new Promise((resolve) => setTimeout(resolve, 500));
             chai_1.expect(spy.callCount).to.be.eq(1, "Consumer spy should have been called once");
             sinon.assert.calledWithExactly(spy, msg);
-            disposer();
+            yield disposer();
         }));
         it("should DLQ message from Producer if action fails", () => __awaiter(void 0, void 0, void 0, function* () {
             const disposer = yield consumer.subscribe(queueName, m => Promise.reject(new Error("A fake error that should put messages on the DLQ")));
@@ -144,7 +149,7 @@ describe("Valid configuration", () => {
             const msg = { data: "time", value: new Date().getTime() };
             yield producer.publish(queueName, msg);
             yield new Promise((resolve) => setTimeout(resolve, 500));
-            disposer();
+            yield disposer();
         }));
         it("should re-establish the connection and channel if there is a connection error", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
@@ -154,18 +159,23 @@ describe("Valid configuration", () => {
             yield new Promise((resolve) => setTimeout(resolve, 500));
             chai_1.expect(consumer.connection).to.exist;
             chai_1.expect(firstConnection).to.not.equal(consumer.connection);
-            disposer();
+            yield firstConnection.close();
+            yield disposer();
         }));
         it("should not accumulate error handlers if there are multiple connection errors", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
             const disposer = yield consumer.subscribe(queueName, spy);
+            const errorConnections = [];
+            errorConnections.push(consumer.connection);
             consumer.connection.emit("error", new Error("Oh no, I'm a connection error!"));
             yield new Promise((resolve) => setTimeout(resolve, 500));
+            errorConnections.push(consumer.connection);
             consumer.connection.emit("error", new Error("Oh no, a second connection error!"));
             yield new Promise((resolve) => setTimeout(resolve, 500));
             chai_1.expect(consumer.connection).to.exist;
             chai_1.expect(consumer.connection.listenerCount("error")).to.equal(2);
-            disposer();
+            yield Promise.all(errorConnections.map(c => c.close()));
+            yield disposer();
         }));
         it("should receive messages from the queue before and after a connection error", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
@@ -175,6 +185,7 @@ describe("Valid configuration", () => {
             yield chai_1.expect(producer.publish(queueName, msgOne)).to.eventually.be.fulfilled;
             yield new Promise((resolve) => setTimeout(resolve, 500));
             chai_1.expect(spy.callCount).to.be.eq(1, "Consumer spy should have been called once");
+            const errorConnection = consumer.connection;
             consumer.connection.emit("error", new Error("Oh no, I'm a connection error!"));
             yield new Promise((resolve) => setTimeout(resolve, 500));
             const msgTwo = { data: "time", value: new Date().getTime() };
@@ -183,7 +194,8 @@ describe("Valid configuration", () => {
             chai_1.expect(spy.callCount).to.be.eq(2, "Consumer spy should have been called twice");
             sinon.assert.calledWith(spy.getCall(0), msgOne);
             sinon.assert.calledWith(spy.getCall(1), msgTwo);
-            disposer();
+            yield errorConnection.close();
+            yield disposer();
         }));
     });
     describe("Producer", () => {
@@ -199,6 +211,7 @@ describe("Valid configuration", () => {
             const channels = connection.connection.channels;
             const openChannels = channels.filter(channel => channel !== null);
             chai_1.expect(openChannels.length).to.equal(1);
+            yield connection.close();
         }));
     });
     after(() => __awaiter(void 0, void 0, void 0, function* () {
