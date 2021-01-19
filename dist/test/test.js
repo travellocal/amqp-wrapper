@@ -1,9 +1,10 @@
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -13,13 +14,18 @@ const sinon = require("sinon");
 const common_1 = require("../common");
 const index_1 = require("../index");
 const chai_1 = require("./chai");
+const events_1 = require("events");
+const amqp = require("amqplib");
 const logger = rokot_log_1.ConsoleLogger.create("test", { level: "trace" });
 const config = { host: "localhost", port: 5672 };
 const invalidConfig = { host: "localhost", port: 5670 };
 const queueName = "TestPC";
 describe("RabbitMqSingletonConnectionFactory Test", () => {
-    it("Singleton Connection Factory should return singleton connection", () => __awaiter(this, void 0, void 0, function* () {
-        const factory = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
+    let factory;
+    beforeEach(() => {
+        factory = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
+    });
+    it("Singleton Connection Factory should return singleton connection", () => __awaiter(void 0, void 0, void 0, function* () {
         const connections = yield Promise.all([
             factory.create(),
             factory.create(),
@@ -31,7 +37,48 @@ describe("RabbitMqSingletonConnectionFactory Test", () => {
             chai_1.expect(connection).to.exist;
             chai_1.expect(connections[0]).to.equal(connection);
         }
+        yield connections[0].close();
     }));
+    describe("connection error on first connection attempt", () => {
+        let connectStub;
+        beforeEach(() => {
+            connectStub = sinon.stub(amqp, "connect");
+            connectStub.rejects({
+                code: "ENOTFOUND",
+                syscall: "getaddrinfo",
+                host: "myaddress"
+            });
+        });
+        afterEach(() => {
+            connectStub.restore();
+        });
+        it("should throw an error and not set a persistent connection if it can't connect", () => __awaiter(void 0, void 0, void 0, function* () {
+            return chai_1.expect(factory.create()).to.eventually.be.rejected.then(v => {
+                chai_1.expect(v).to.exist;
+                chai_1.expect(v.code).to.eq("ENOTFOUND");
+                chai_1.expect(factory.connectionPromise).to.equal(null);
+            });
+        }));
+    });
+    describe("connection error during operation", () => {
+        let connectStub;
+        let mockConnection;
+        beforeEach(() => {
+            mockConnection = new events_1.EventEmitter();
+            connectStub = sinon.stub(amqp, "connect");
+            connectStub.returns(mockConnection);
+        });
+        afterEach(() => {
+            connectStub.restore();
+        });
+        it("should log an error and clear connection when an error is thrown by the existing connection", () => __awaiter(void 0, void 0, void 0, function* () {
+            yield factory.create();
+            chai_1.expect(factory.connectionPromise).to.be.a('promise');
+            chai_1.expect(factory.connectionPromise).to.eventually.equal(mockConnection);
+            mockConnection.emit('error', "I am an error object.");
+            chai_1.expect(factory.connectionPromise).to.equal(null);
+        }));
+    });
 });
 describe("Invalid configuration", () => {
     let factory;
@@ -44,8 +91,8 @@ describe("Invalid configuration", () => {
             chai_1.expect(v.code).to.eq("ECONNREFUSED");
         });
     });
-    it("RabbitMqConsumer: Invalid Connection config should fail subscribe", () => {
-        const consumer = new index_1.RabbitMqConsumer(logger, factory);
+    it("RabbitMqConsumer: Invalid Connection config should fail subscribe when exponential backoff is disabled", () => {
+        const consumer = new index_1.RabbitMqConsumer(logger, factory, 0);
         return chai_1.expect(consumer.subscribe(queueName, m => { })).to.eventually.be.rejected.then(v => {
             chai_1.expect(v).to.exist;
             chai_1.expect(v.code).to.eq("ECONNREFUSED");
@@ -64,24 +111,28 @@ describe("Valid configuration", () => {
         let factory;
         let consumer;
         beforeEach(() => {
-            factory = new index_1.RabbitMqConnectionFactory(logger, config);
+            factory = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
             consumer = new index_1.RabbitMqConsumer(logger, factory);
         });
-        it("should subscribe and dispose ok with simple queue name", () => __awaiter(this, void 0, void 0, function* () {
+        afterEach(() => __awaiter(void 0, void 0, void 0, function* () {
+            const connection = yield factory.connectionPromise;
+            yield connection.close();
+        }));
+        it("should subscribe and dispose ok with simple queue name", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
             const disposer = yield consumer.subscribe(queueName, spy);
             chai_1.expect(disposer, "disposer should exist").to.exist;
             chai_1.expect(spy.callCount).to.be.eq(0, "Consumer spy should not have been called");
             return chai_1.expect(disposer()).to.eventually.be.fulfilled;
         }));
-        it("should subscribe and dispose ok with queue config", () => __awaiter(this, void 0, void 0, function* () {
+        it("should subscribe and dispose ok with queue config", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
             const disposer = yield consumer.subscribe(new common_1.DefaultQueueNameConfig(queueName), spy);
             chai_1.expect(disposer, "disposer should exist").to.exist;
             chai_1.expect(spy.callCount).to.be.eq(0, "Consumer spy should not have been called");
             return chai_1.expect(disposer()).to.eventually.be.fulfilled;
         }));
-        it("should recieve message from Producer", () => __awaiter(this, void 0, void 0, function* () {
+        it("should receive message from Producer", () => __awaiter(void 0, void 0, void 0, function* () {
             const spy = sinon.spy();
             const disposer = yield consumer.subscribe(queueName, spy);
             const producer = new index_1.RabbitMqProducer(logger, factory);
@@ -90,19 +141,65 @@ describe("Valid configuration", () => {
             yield new Promise((resolve) => setTimeout(resolve, 500));
             chai_1.expect(spy.callCount).to.be.eq(1, "Consumer spy should have been called once");
             sinon.assert.calledWithExactly(spy, msg);
-            disposer();
+            yield disposer();
         }));
-        it("should DLQ message from Producer if action fails", () => __awaiter(this, void 0, void 0, function* () {
+        it("should DLQ message from Producer if action fails", () => __awaiter(void 0, void 0, void 0, function* () {
             const disposer = yield consumer.subscribe(queueName, m => Promise.reject(new Error("A fake error that should put messages on the DLQ")));
             const producer = new index_1.RabbitMqProducer(logger, factory);
             const msg = { data: "time", value: new Date().getTime() };
             yield producer.publish(queueName, msg);
             yield new Promise((resolve) => setTimeout(resolve, 500));
-            disposer();
+            yield disposer();
+        }));
+        it("should re-establish the connection and channel if there is a connection error", () => __awaiter(void 0, void 0, void 0, function* () {
+            const spy = sinon.spy();
+            const disposer = yield consumer.subscribe(queueName, spy);
+            const firstConnection = consumer.connection;
+            consumer.connection.emit("error", new Error("Oh no, I'm a connection error!"));
+            yield new Promise((resolve) => setTimeout(resolve, 500));
+            chai_1.expect(consumer.connection).to.exist;
+            chai_1.expect(firstConnection).to.not.equal(consumer.connection);
+            yield firstConnection.close();
+            yield disposer();
+        }));
+        it("should not accumulate error handlers if there are multiple connection errors", () => __awaiter(void 0, void 0, void 0, function* () {
+            const spy = sinon.spy();
+            const disposer = yield consumer.subscribe(queueName, spy);
+            const errorConnections = [];
+            errorConnections.push(consumer.connection);
+            consumer.connection.emit("error", new Error("Oh no, I'm a connection error!"));
+            yield new Promise((resolve) => setTimeout(resolve, 500));
+            errorConnections.push(consumer.connection);
+            consumer.connection.emit("error", new Error("Oh no, a second connection error!"));
+            yield new Promise((resolve) => setTimeout(resolve, 500));
+            chai_1.expect(consumer.connection).to.exist;
+            chai_1.expect(consumer.connection.listenerCount("error")).to.equal(2);
+            yield Promise.all(errorConnections.map(c => c.close()));
+            yield disposer();
+        }));
+        it("should receive messages from the queue before and after a connection error", () => __awaiter(void 0, void 0, void 0, function* () {
+            const spy = sinon.spy();
+            const disposer = yield consumer.subscribe(queueName, spy);
+            const producer = new index_1.RabbitMqProducer(logger, factory);
+            const msgOne = { data: "time", value: new Date().getTime() };
+            yield chai_1.expect(producer.publish(queueName, msgOne)).to.eventually.be.fulfilled;
+            yield new Promise((resolve) => setTimeout(resolve, 500));
+            chai_1.expect(spy.callCount).to.be.eq(1, "Consumer spy should have been called once");
+            const errorConnection = consumer.connection;
+            consumer.connection.emit("error", new Error("Oh no, I'm a connection error!"));
+            yield new Promise((resolve) => setTimeout(resolve, 500));
+            const msgTwo = { data: "time", value: new Date().getTime() };
+            yield chai_1.expect(producer.publish(queueName, msgTwo)).to.eventually.be.fulfilled;
+            yield new Promise((resolve) => setTimeout(resolve, 500));
+            chai_1.expect(spy.callCount).to.be.eq(2, "Consumer spy should have been called twice");
+            sinon.assert.calledWith(spy.getCall(0), msgOne);
+            sinon.assert.calledWith(spy.getCall(1), msgTwo);
+            yield errorConnection.close();
+            yield disposer();
         }));
     });
     describe("Producer", () => {
-        it("should not leave channels open", () => __awaiter(this, void 0, void 0, function* () {
+        it("should not leave channels open", () => __awaiter(void 0, void 0, void 0, function* () {
             const factory = new index_1.RabbitMqSingletonConnectionFactory(logger, config);
             const producer = new index_1.RabbitMqProducer(logger, factory);
             const connection = yield factory.create();
@@ -114,9 +211,10 @@ describe("Valid configuration", () => {
             const channels = connection.connection.channels;
             const openChannels = channels.filter(channel => channel !== null);
             chai_1.expect(openChannels.length).to.equal(1);
+            yield connection.close();
         }));
     });
-    after(() => __awaiter(this, void 0, void 0, function* () {
+    after(() => __awaiter(void 0, void 0, void 0, function* () {
         const factory = new index_1.RabbitMqConnectionFactory(logger, config);
         const queueConfig = new common_1.DefaultQueueNameConfig(queueName);
         const connection = yield factory.create();

@@ -13,43 +13,64 @@ export interface IRabbitMqConnectionConfig {
 }
 
 function isConnectionConfig(config: IRabbitMqConnectionConfig | string): config is IRabbitMqConnectionConfig {
-  if ((config as IRabbitMqConnectionConfig).host && (config as IRabbitMqConnectionConfig).port) {
-    return true;
-  }
+  return (config as IRabbitMqConnectionConfig).host !== undefined && (config as IRabbitMqConnectionConfig).port !== undefined;
 }
 
-export class RabbitMqConnectionFactory implements IRabbitMqConnectionFactory {
-  private connection: string;
-  constructor(private logger: bunyan, config: IRabbitMqConnectionConfig | string) {
-    this.connection = isConnectionConfig(config) ? `amqp://${config.host}:${config.port}` : config;
-    this.logger = createChildLogger(logger, "RabbitMqConnectionFactory");
+export class ConnectionFactoryBase {
+
+  protected address: string;
+  protected logger: bunyan;
+
+  constructor(parentLogger: bunyan, config: IRabbitMqConnectionConfig | string) {
+
+    this.address = isConnectionConfig(config) ? `amqp://${config.host}:${config.port}` : config;
+    this.logger = createChildLogger(parentLogger, "RabbitMqConnectionFactory");
   }
 
-  public async create(): Promise<amqp.Connection> {
-    this.logger.debug("connecting to %s", this.connection);
+  protected async _connect(): Promise<amqp.Connection> {
+    this.logger.debug("Connecting to %s", this.address);
     try {
-      return await amqp.connect(this.connection);
+      return await amqp.connect(this.address);
     } catch (err) {
-      this.logger.error("failed to create connection '%s'", this.connection);
+      this.logger.error("Failed to create connection '%s'", this.address);
       return Promise.reject(err);
     }
+
+  }
+}
+export class RabbitMqConnectionFactory extends ConnectionFactoryBase implements IRabbitMqConnectionFactory {
+
+  public async create(): Promise<amqp.Connection> {
+    return this._connect();
   }
 }
 
-export class RabbitMqSingletonConnectionFactory implements IRabbitMqConnectionFactory {
-  private connection: string;
-  private promise: Promise<amqp.Connection>;
+export class RabbitMqSingletonConnectionFactory extends ConnectionFactoryBase implements IRabbitMqConnectionFactory {
+  public connectionPromise: Promise<amqp.Connection>;
 
-  constructor(private logger: bunyan, config: IRabbitMqConnectionConfig | string) {
-    this.connection = isConnectionConfig(config) ? `amqp://${config.host}:${config.port}` : config;
-  }
-
-  public create(): Promise<amqp.Connection> {
-    if (this.promise) {
-      this.logger.trace("reusing connection to %s", this.connection);
-      return this.promise;
+  public async create(): Promise<amqp.Connection> {
+    // Check if we've started connecting elsewhere
+    if (this.connectionPromise) {
+      this.logger.trace("reusing connection to %s", this.address);
+    } else {
+        // Don't wait for the connection to be complete to assign it persistently
+        this.connectionPromise = this._connect();
+        try {
+          const connection = await this.connectionPromise;
+          connection.on('error', this.handleConnectionFailure.bind(this));
+        } catch (error) {
+          this.connectionPromise = null;
+          return Promise.reject(error);
+        }
     }
-    this.logger.debug("creating connection to %s", this.connection);
-    return this.promise = Promise.resolve(amqp.connect(this.connection));
+    return this.connectionPromise;
   }
+
+  private handleConnectionFailure(err): void {
+    this.logger.error("Connection error - clearing connection.")
+    this.logger.error(err);
+    // Clear connection
+    this.connectionPromise = null;
+  }
+
 }
